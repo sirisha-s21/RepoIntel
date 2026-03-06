@@ -10,6 +10,8 @@ This version includes a **modern Tailwind CSS frontend** and a **FastAPI backend
 
 ---
 
+## Live Demo: https://repointel.onrender.com
+
 ## 🚀 Features
 
 - **Dynamic Roadmap:** Suggestions based on repository structure, commits, README, tests, CI/CD, docs, stars, and languages.
