@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RepoIntel | GitHub Analyzer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-200 min-h-screen">
+
+  <div class="max-w-4xl mx-auto px-4 py-12">
+    <div class="text-center mb-12">
+      <h1 class="text-4xl font-bold tracking-tight text-white mb-2">
+        Repo<span class="text-blue-500">Intel</span>
+      </h1>
+      <p class="text-slate-400">Analyze repository quality and get a growth roadmap in seconds.</p>
+    </div>
+
+    <div class="glass border border-slate-800 p-6 rounded-2xl shadow-xl mb-8">
+      <div class="flex flex-col md:flex-row gap-4">
+        <input 
+          type="text" 
+          id="repoUrl" 
+          placeholder="https://github.com/username/repo" 
+          class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+        >
+        <button 
+          onclick="analyzeRepo()" 
+          id="btnText"
+          class="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-8 py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+        >
+          <i data-lucide="search" class="w-5 h-5"></i> Analyze
+        </button>
+      </div>
+    </div>
+
+    <div id="loading" class="hidden text-center py-12">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+      <p class="text-slate-400">Scanning repository metadata...</p>
+    </div>
+
+    <div id="result" class="hidden space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="glass border border-slate-800 p-6 rounded-2xl text-center">
+          <p class="text-sm uppercase tracking-widest text-slate-500 mb-1">Overall Score</p>
+          <div id="scoreDisplay" class="text-5xl font-bold text-blue-400">0</div>
+        </div>
+        <div class="glass border border-slate-800 p-6 rounded-2xl text-center">
+          <p class="text-sm uppercase tracking-widest text-slate-500 mb-1">Level</p>
+          <div id="levelDisplay" class="text-2xl font-semibold text-white mt-2">Beginner</div>
+        </div>
+        <div class="glass border border-slate-800 p-6 rounded-2xl text-center">
+          <p class="text-sm uppercase tracking-widest text-slate-500 mb-1">Activity</p>
+          <div id="commitDisplay" class="text-2xl font-semibold text-white mt-2">0 Commits</div>
+        </div>
+      </div>
+
+      <div class="glass border border-slate-800 p-8 rounded-2xl">
+        <h3 class="text-xl font-semibold mb-4 flex items-center gap-2">
+          <i data-lucide="info" class="text-blue-400"></i> Summary
+        </h3>
+        <p id="summaryText" class="text-slate-300 leading-relaxed mb-6"></p>
+        
+        <div class="flex flex-wrap gap-2" id="languageTags">
+          </div>
+      </div>
+
+      <div class="bg-blue-600/10 border border-blue-500/20 p-8 rounded-2xl">
+        <h3 class="text-xl font-semibold mb-4 text-blue-400 flex items-center gap-2">
+          <i data-lucide="map" class=""></i> Improvement Roadmap
+        </h3>
+        <ul id="roadmapList" class="space-y-3">
+          </ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Initialize icons
+    lucide.createIcons();
+
+    async function analyzeRepo() {
+      const repoUrl = document.getElementById('repoUrl').value;
+      const resultDiv = document.getElementById('result');
+      const loadingDiv = document.getElementById('loading');
+      
+      if(!repoUrl) return alert("Please enter a URL");
+
+      // UI State: Loading
+      loadingDiv.classList.remove('hidden');
+      resultDiv.classList.add('hidden');
+
+      try {
+        const res = await fetch('http://127.0.0.1:8000/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ repo_url: repoUrl })
+        });
+        
+        if (!res.ok) throw new Error("Repo not found or API error");
+        
+        const data = await res.json();
+
+        // Populate Data
+        document.getElementById('scoreDisplay').innerText = data.score;
+        document.getElementById('levelDisplay').innerText = data.level;
+        document.getElementById('commitDisplay').innerText = `${data.commit_count} Commits`;
+        document.getElementById('summaryText').innerText = data.summary;
+
+        // Roadmap
+        const roadmapList = document.getElementById('roadmapList');
+        roadmapList.innerHTML = data.roadmap.map(item => `
+          <li class="flex items-start gap-3 text-slate-300">
+            <i data-lucide="check-circle-2" class="w-5 h-5 text-blue-500 mt-0.5"></i>
+            <span>${item}</span>
+          </li>
+        `).join('');
+
+        // Languages
+        const langContainer = document.getElementById('languageTags');
+        langContainer.innerHTML = data.languages.map(lang => `
+          <span class="bg-slate-800 text-slate-300 px-3 py-1 rounded-full text-sm border border-slate-700">${lang}</span>
+        `).join('');
+
+        // UI State: Show Results
+        loadingDiv.classList.add('hidden');
+        resultDiv.classList.remove('hidden');
+        lucide.createIcons(); // Re-render icons for new list items
+
+      } catch (err) {
+        alert(err.message);
+        loadingDiv.classList.add('hidden');
+      }
+    }
+  </script>
+</body>
+</html>
